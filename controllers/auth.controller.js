@@ -2,26 +2,6 @@ const authService = require("../services/auth.service");
 const rbacService = require("../services/rbac.service");
 const auditService = require("../services/audit.service");
 const User = require("../models/User");
-const isProd = process.env.NODE_ENV === "production";
-
-const getRefreshCookieOptions = (rememberMe, maxAge) => {
-  const baseOptions = {
-    httpOnly: true,
-    secure: isProd,            // SameSite=None üçün MÜTLƏQ true olmalıdır
-    sameSite: isProd ? "none" : "lax",
-    path: "/api/v1/auth/refresh",
-  };
-
-  if (rememberMe && maxAge) {
-    return {
-      ...baseOptions,
-      maxAge,               // persistent cookie
-    };
-  }
-
-  return baseOptions;       // session cookie (browser bağlananda silinir)
-};
-
 
 const login = async (req, res, next) => {
   try {
@@ -40,13 +20,6 @@ const login = async (req, res, next) => {
 
     const statusCode = 200;
 
-    const refreshCookieOptions = getRefreshCookieOptions(
-      rememberMe,
-      refreshTokenMaxAgeMs
-    );
-
-    res.cookie("refreshToken", refreshToken, refreshCookieOptions);
-
     await auditService.log({
       req,
       userId: user._id,
@@ -63,6 +36,7 @@ const login = async (req, res, next) => {
       tokenType: "Bearer",
       user,
       accessToken,
+      refreshToken,
       accessTokenExpiresIn,
       refreshTokenExpiresIn,
       accessTokenMaxAgeMs,
@@ -75,7 +49,8 @@ const login = async (req, res, next) => {
 
 const refresh = async (req, res, next) => {
   try {
-    const refreshToken = req.cookies && req.cookies.refreshToken ? req.cookies.refreshToken : null;
+    const refreshToken =
+      req.body && req.body.refreshToken ? req.body.refreshToken : null;
     if (!refreshToken) {
       const error = new Error("Yeniləmə tokeni tapılmadı");
       error.statusCode = 401;
@@ -113,9 +88,6 @@ const refresh = async (req, res, next) => {
 
 const logout = async (req, res, next) => {
   try {
-    const refreshCookieOptions = getRefreshCookieOptions(false, null);
-    res.clearCookie("refreshToken", refreshCookieOptions);
-
     const statusCode = 200;
 
     await auditService.log({
