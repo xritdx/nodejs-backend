@@ -83,19 +83,17 @@ const seedDatabase = async () => {
     const adminRole = createdRoles.find(r => r.name === 'Admin');
     const userRole = createdRoles.find(r => r.name === 'User');
 
-    // Assign Permissions to Roles
+    const allPermissions = await Permission.find({});
     const permissionAssignments = [];
     
-    // Admin gets all permissions
-    createdPermissions.forEach(perm => {
+    allPermissions.forEach(perm => {
       permissionAssignments.push({
         roleId: adminRole._id,
         permissionId: perm._id
       });
     });
 
-    // User gets only read permissions
-    createdPermissions.filter(p => p.action === 'read').forEach(perm => {
+    allPermissions.filter(p => p.action === 'read').forEach(perm => {
       permissionAssignments.push({
         roleId: userRole._id,
         permissionId: perm._id
