@@ -3,13 +3,23 @@ const rbacService = require("../services/rbac.service");
 const auditService = require("../services/audit.service");
 const User = require("../models/User");
 
-const getCookieOptions = maxAge => ({
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "strict",
-  maxAge,
-  path: "/api/v1/auth"
-});
+const getRefreshCookieOptions = (rememberMe, maxAge) => {
+  const baseOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/api/v1/auth/refresh"
+  };
+
+  if (rememberMe && maxAge) {
+    return {
+      ...baseOptions,
+      maxAge
+    };
+  }
+
+  return baseOptions;
+};
 
 const login = async (req, res, next) => {
   try {
@@ -26,9 +36,14 @@ const login = async (req, res, next) => {
 
     if (user.password) delete user.password;
 
-    res.cookie("refreshToken", refreshToken, getCookieOptions(refreshTokenMaxAgeMs));
-
     const statusCode = 200;
+
+    const refreshCookieOptions = getRefreshCookieOptions(
+      rememberMe,
+      refreshTokenMaxAgeMs
+    );
+
+    res.cookie("refreshToken", refreshToken, refreshCookieOptions);
 
     await auditService.log({
       req,
@@ -58,7 +73,7 @@ const login = async (req, res, next) => {
 
 const refresh = async (req, res, next) => {
   try {
-    const refreshToken = req.cookies?.refreshToken;
+    const refreshToken = req.cookies && req.cookies.refreshToken ? req.cookies.refreshToken : null;
     if (!refreshToken) {
       const error = new Error("Yeniləmə tokeni tapılmadı");
       error.statusCode = 401;
@@ -96,12 +111,8 @@ const refresh = async (req, res, next) => {
 
 const logout = async (req, res, next) => {
   try {
-    res.clearCookie("refreshToken", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      path: "/api/v1/auth"
-    });
+    const refreshCookieOptions = getRefreshCookieOptions(false, null);
+    res.clearCookie("refreshToken", refreshCookieOptions);
 
     const statusCode = 200;
 
