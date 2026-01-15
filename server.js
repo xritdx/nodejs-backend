@@ -20,26 +20,26 @@ connectDB();
 const app = express();
 const server = http.createServer(app);
 
-const allowedOrigins = (process.env.CLIENT_ORIGIN || "")
+const allowedOrigins = (process.env.CLIENT_ORIGINS || "")
   .split(",")
-  .map(s => s.trim())
-  .filter(Boolean);
+  .map(o => o.trim());
 
 app.use(cors({
-  origin: (origin, cb) => {
-    // Postman/curl kimi origin göndərməyənlər üçün icazə ver
-    if (!origin) return cb(null, true);
+  origin: function (origin, callback) {
+    // Postman, curl kimi origin göndərməyənlər
+    if (!origin) return callback(null, true);
 
-    if (allowedOrigins.includes(origin)) return cb(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
 
-    return cb(new Error(`CORS blocked: ${origin}`));
+    return callback(new Error("CORS blocked: " + origin));
   },
   credentials: true,
   methods: ["GET","POST","PUT","PATCH","DELETE","OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
 }));
 
-// Preflight-lər üçün
 app.options("*", cors({
   origin: allowedOrigins,
   credentials: true

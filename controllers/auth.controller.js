@@ -6,20 +6,21 @@ const User = require("../models/User");
 const getRefreshCookieOptions = (rememberMe, maxAge) => {
   const baseOptions = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/api/v1/auth/refresh"
+    secure: true,            // SameSite=None üçün MÜTLƏQ true olmalıdır
+    sameSite: "none",        // cross-domain cookie üçün
+    path: "/api/v1/auth/refresh",
   };
 
   if (rememberMe && maxAge) {
     return {
       ...baseOptions,
-      maxAge
+      maxAge,               // persistent cookie
     };
   }
 
-  return baseOptions;
+  return baseOptions;       // session cookie (browser bağlananda silinir)
 };
+
 
 const login = async (req, res, next) => {
   try {
