@@ -1,6 +1,7 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const RoleToUserAssignment = require("../models/RoleToUserAssignment");
 
 const getAccessTokenSecret = () =>
   process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
@@ -27,17 +28,34 @@ const toMs = value => {
 
 const login = async ({ email, password, rememberMe }) => {
   const user = await User.findOne({ email });
-  if (!user) throw new Error("E-mail və ya şifrə yanlışdır");
+  if (!user) {
+    const error = new Error("E-mail və ya şifrə yanlışdır");
+    error.statusCode = 401;
+    throw error;
+  }
+
+  if (!user.isActive) {
+    const error = new Error("İstifadəçi hesabı deaktiv edilib");
+    error.statusCode = 401;
+    throw error;
+  }
 
   const isPasswordValid = await bcrypt.compare(password, user.password);
-  if (!isPasswordValid) throw new Error("E-mail və ya şifrə yanlışdır");
+  if (!isPasswordValid) {
+    const error = new Error("E-mail və ya şifrə yanlışdır");
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const roleAssignment = await RoleToUserAssignment.findOne({ userId: user._id }).select("roleId");
 
   const accessTokenExpiresIn = ACCESS_TOKEN_EXPIRES_IN;
   const refreshTokenExpiresIn = rememberMe ? REFRESH_TOKEN_EXPIRES_IN_LONG : REFRESH_TOKEN_EXPIRES_IN_SHORT;
 
   const accessTokenPayload = {
     id: user._id,
-    email: user.email
+    email: user.email,
+    roleId: roleAssignment ? roleAssignment.roleId : null
   };
 
   const accessToken = jwt.sign(accessTokenPayload, getAccessTokenSecret(), {
@@ -72,9 +90,12 @@ const refreshAccessToken = async refreshToken => {
       throw error;
     }
 
+    const roleAssignment = await RoleToUserAssignment.findOne({ userId: user._id }).select("roleId");
+
     const accessTokenPayload = {
       id: user._id,
-      email: user.email
+      email: user.email,
+      roleId: roleAssignment ? roleAssignment.roleId : null
     };
 
     const accessToken = jwt.sign(accessTokenPayload, getAccessTokenSecret(), {
