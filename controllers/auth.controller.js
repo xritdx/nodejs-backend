@@ -2,12 +2,13 @@ const authService = require("../services/auth.service");
 const rbacService = require("../services/rbac.service");
 const auditService = require("../services/audit.service");
 const User = require("../models/User");
+const isProd = process.env.NODE_ENV === "production";
 
 const getRefreshCookieOptions = (rememberMe, maxAge) => {
   const baseOptions = {
     httpOnly: true,
-    secure: true,            // SameSite=None üçün MÜTLƏQ true olmalıdır
-    sameSite: "none",        // cross-domain cookie üçün
+    secure: isProd,            // SameSite=None üçün MÜTLƏQ true olmalıdır
+    sameSite: isProd ? "none" : "lax",
     path: "/api/v1/auth/refresh",
   };
 
