@@ -1,0 +1,46 @@
+name: Deploy Node.js Backend to Hostinger VPS
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: SSH deploy (git pull + install + build + pm2 reload)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            set -e
+            cd ${{ secrets.APP_DIR }}
+
+            echo "== Pull latest =="
+            git fetch --all
+            git reset --hard origin/main
+
+            echo "== Install deps =="
+            npm ci --omit=dev
+
+            # Əgər TypeScript/NestJS və s. varsa build lazımdır:
+            if [ -f package.json ] && cat package.json | grep -q "\"build\""; then
+              echo "== Build =="
+              npm run build
+            fi
+
+            echo "== PM2 reload =="
+            if pm2 describe xritdx-backend > /dev/null; then
+              pm2 reload ecosystem.config.js --update-env
+            else
+              pm2 start ecosystem.config.js
+            fi
+
+            pm2 save
