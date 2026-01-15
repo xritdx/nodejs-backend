@@ -21,8 +21,10 @@ const app = express();
 const server = http.createServer(app);
 
 app.use(cors({
-  origin: process.env.CLIENT_ORIGIN || true,
-  credentials: true
+  origin: process.env.CLIENT_ORIGIN || "*",
+  credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization"],
+
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
