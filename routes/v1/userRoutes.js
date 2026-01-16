@@ -5,6 +5,6 @@ const checkPermission = require('../../middlewares/rbac');
 
 const router = express.Router();
 
-router.get('/', authMiddleware, checkPermission('user.read'), UserController.getAllUsers);
+router.get('/get-all', authMiddleware, checkPermission('user.read'), UserController.getAllUsers);
 
 module.exports = router;
