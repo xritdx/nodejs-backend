@@ -33,6 +33,17 @@ const login = async (req, res, next) => {
       }
     });
 
+    const safeBody = req.body ? { ...req.body } : null;
+    if (safeBody && safeBody.password) delete safeBody.password;
+
+    console.log("[AuthController.login]", {
+      method: req.method,
+      path: req.originalUrl,
+      userId: user._id,
+      userEmail: user.email,
+      body: safeBody
+    });
+
     const cookieOptions = {
       httpOnly: true,
       secure: "production",
@@ -89,6 +100,13 @@ const refresh = async (req, res, next) => {
       statusCode
     });
 
+    console.log("[AuthController.refresh]", {
+      method: req.method,
+      path: req.originalUrl,
+      userId,
+      hasRefreshCookie: !!(req.cookies && req.cookies.refreshToken)
+    });
+
     const cookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -134,6 +152,13 @@ const logout = async (req, res, next) => {
       statusCode
     });
 
+    console.log("[AuthController.logout]", {
+      method: req.method,
+      path: req.originalUrl,
+      userId,
+      userEmail: req.user && req.user.email ? req.user.email : null
+    });
+
     res.clearCookie("refreshToken", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -174,6 +199,14 @@ const me = async (req, res, next) => {
       req.auth && typeof req.auth.tokenExpiresInMs === "number"
         ? req.auth.tokenExpiresInMs
         : null;
+
+    console.log("[AuthController.me]", {
+      method: req.method,
+      path: req.originalUrl,
+      userId: req.user._id,
+      userEmail: req.user.email,
+      tokenExpiresInMs
+    });
 
     res.status(200).json({
       message: "Sessiya məlumatları uğurla gətirildi",
