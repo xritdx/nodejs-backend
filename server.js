@@ -73,21 +73,23 @@ wss.on('connection', (ws, req) => {
       const token = url.searchParams.get('token');
 
       if (!token) {
-        ws.close(4001);
+        ws.close(4001, 'Token tələb olunur'); // 4001: Unauthorized
         return;
       }
 
       const decoded = jwt.verify(token, getAccessTokenSecret());
 
+      // İstifadəçini tapırıq
       const user = await User.findById(decoded.id);
       if (!user || !user.isActive) {
-        ws.close(4002);
+        ws.close(4002, 'İstifadəçi aktiv deyil və ya tapılmadı');
         return;
       }
 
+      // Token version yoxlanışı
       const currentVersion = typeof user.tokenVersion === 'number' ? user.tokenVersion : 0;
       if (typeof decoded.tokenVersion !== 'number' || decoded.tokenVersion !== currentVersion) {
-        ws.close(4002);
+        ws.close(4003, 'Sessiya etibarsızdır'); // 4003: Session Invalid
         return;
       }
 
@@ -109,10 +111,16 @@ wss.on('connection', (ws, req) => {
       }));
 
       ws.on('message', message => {
-        ws.send(JSON.stringify({
-          type: 'echo',
-          message: message.toString()
-        }));
+        // Burada gələcək mesajları emal edə bilərik
+        // Məsələn, ping/pong mexanizmi
+        try {
+          const parsed = JSON.parse(message);
+          if (parsed.type === 'ping') {
+             ws.send(JSON.stringify({ type: 'pong' }));
+          }
+        } catch (e) {
+          // JSON olmayan mesajları ignor edirik
+        }
       });
 
       ws.on('close', () => {
@@ -120,8 +128,20 @@ wss.on('connection', (ws, req) => {
           onlineUsers.removeOnlineUser(ws.userId);
         }
       });
+      
+      ws.on('error', (err) => {
+          console.error(`WebSocket xətası: ${err.message}`);
+          if (ws.userId) {
+            onlineUsers.removeOnlineUser(ws.userId);
+          }
+      });
+
     } catch (err) {
-      ws.close(4002);
+      if (err.name === 'TokenExpiredError') {
+         ws.close(4004, 'Token vaxtı bitib');
+      } else {
+         ws.close(4002, 'Doğrulama xətası');
+      }
     }
   })();
 });
