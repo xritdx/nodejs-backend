@@ -96,12 +96,15 @@ wss.on('connection', (ws, req) => {
       ws.user = { id: user._id, email: user.email };
       ws.userId = user._id;
 
+      console.log(`✅ WebSocket Connected: ${user.email} (${user._id})`);
+
       const permissions = await rbacService.getUserPermissions(ws.userId);
       const slugs = permissions.map(p => p.slug);
       ws.permissions = slugs;
       ws.canSeeUserStatus = slugs.includes('user.read');
 
       onlineUsers.addOnlineUser(ws.userId);
+      console.log(`👥 Online Users Updated: Added ${user.email}`);
 
       ws.send(JSON.stringify({
         type: 'connected',
@@ -116,21 +119,27 @@ wss.on('connection', (ws, req) => {
         try {
           const parsed = JSON.parse(message);
           if (parsed.type === 'ping') {
+             // console.log(`Ping received from ${ws.user.email}`); // Opsional: Çox log olmaması üçün comment-də saxla
              ws.send(JSON.stringify({ type: 'pong' }));
+          } else {
+             console.log(`📩 Message from ${ws.user.email}:`, parsed);
           }
         } catch (e) {
           // JSON olmayan mesajları ignor edirik
+          console.warn(`⚠️ Non-JSON message from ${ws.user.email}:`, message.toString());
         }
       });
 
-      ws.on('close', () => {
+      ws.on('close', (code, reason) => {
+        console.log(`❌ WebSocket Disconnected: ${ws.user?.email || 'Unknown'} (Code: ${code}, Reason: ${reason})`);
         if (ws.userId) {
           onlineUsers.removeOnlineUser(ws.userId);
+          console.log(`👥 Online Users Updated: Removed ${ws.user?.email}`);
         }
       });
       
       ws.on('error', (err) => {
-          console.error(`WebSocket xətası: ${err.message}`);
+          console.error(`🔥 WebSocket Error [${ws.user?.email || 'Unknown'}]: ${err.message}`);
           if (ws.userId) {
             onlineUsers.removeOnlineUser(ws.userId);
           }
