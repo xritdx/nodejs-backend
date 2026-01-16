@@ -18,6 +18,9 @@ const login = async (req, res, next) => {
 
     if (user.password) delete user.password;
 
+    const roles = await rbacService.getUserRoles(user._id);
+    const permissions = await rbacService.getUserPermissions(user._id);
+
     const statusCode = 200;
 
     await auditService.log({
@@ -35,6 +38,8 @@ const login = async (req, res, next) => {
       success: true,
       tokenType: "Bearer",
       user,
+      roles,
+      permissions: permissions.map(p => p.slug),
       accessToken,
       refreshToken,
       accessTokenExpiresIn,
@@ -152,7 +157,9 @@ const me = async (req, res, next) => {
         : null;
 
     res.status(200).json({
+      message: "Sessiya məlumatları uğurla gətirildi",
       success: true,
+      tokenType: "Bearer",
       user,
       roles,
       permissions: permissions.map(p => p.slug),
