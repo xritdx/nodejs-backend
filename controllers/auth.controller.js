@@ -40,6 +40,7 @@ const login = async (req, res, next) => {
       accessTokenExpiresIn,
       refreshTokenExpiresIn,
       accessTokenMaxAgeMs,
+      refreshTokenMaxAgeMs,
       rememberMe
     });
   } catch (error) {
@@ -49,9 +50,9 @@ const login = async (req, res, next) => {
 
 const refresh = async (req, res, next) => {
   try {
-    const refreshToken =
+    const refreshTokenFromClient =
       req.body && req.body.refreshToken ? req.body.refreshToken : null;
-    if (!refreshToken) {
+    if (!refreshTokenFromClient) {
       const error = new Error("Yeniləmə tokeni tapılmadı");
       error.statusCode = 401;
       throw error;
@@ -60,9 +61,12 @@ const refresh = async (req, res, next) => {
     const {
       userId,
       accessToken,
+      refreshToken,
       accessTokenExpiresIn,
-      accessTokenMaxAgeMs
-    } = await authService.refreshAccessToken(refreshToken);
+      accessTokenMaxAgeMs,
+      refreshTokenExpiresIn,
+      refreshTokenMaxAgeMs
+    } = await authService.refreshAccessToken(refreshTokenFromClient);
 
     const statusCode = 200;
 
@@ -78,8 +82,11 @@ const refresh = async (req, res, next) => {
       success: true,
       tokenType: "Bearer",
       accessToken,
+      refreshToken,
       accessTokenExpiresIn,
-      accessTokenMaxAgeMs
+      accessTokenMaxAgeMs,
+      refreshTokenExpiresIn,
+      refreshTokenMaxAgeMs
     });
   } catch (error) {
     next(error);
@@ -88,11 +95,21 @@ const refresh = async (req, res, next) => {
 
 const logout = async (req, res, next) => {
   try {
+    const userId = req.user && req.user._id ? req.user._id : null;
+
+    if (!userId) {
+      const error = new Error("Sessiya tapılmadı, zəhmət olmasa yenidən daxil olun");
+      error.statusCode = 401;
+      throw error;
+    }
+
+    await authService.logout(userId);
+
     const statusCode = 200;
 
     await auditService.log({
       req,
-      userId: req.user && req.user._id ? req.user._id : null,
+      userId,
       action: "auth.logout",
       statusCode
     });

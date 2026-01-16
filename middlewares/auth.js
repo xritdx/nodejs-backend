@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
 const getAccessTokenSecret = () =>
-  process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
+  process.env.JWT_ACCESS_SECRET ;
 
 const auth = async (req, res, next) => {
   try {
@@ -15,6 +15,7 @@ const auth = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, getAccessTokenSecret());
+
     const user = await User.findById(decoded.id).select('-password');
     
     if (!user) {
@@ -28,6 +29,15 @@ const auth = async (req, res, next) => {
       return res.status(401).json({ 
         success: false,
         message: 'İstifadəçi hesabı deaktiv edilib' 
+      });
+    }
+
+    const currentVersion = typeof user.tokenVersion === 'number' ? user.tokenVersion : 0;
+
+    if (typeof decoded.tokenVersion !== 'number' || decoded.tokenVersion !== currentVersion) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token etibarlı deyil'
       });
     }
 

@@ -12,6 +12,7 @@ const notFoundHandler = require('./middlewares/errors/notFoundHandler');
 const auditMiddleware = require('./middlewares/audit');
 const onlineUsers = require('./services/onlineUsers');
 const rbacService = require('./services/rbac.service');
+const User = require('./models/User');
 
 dotenv.config();
 
@@ -61,7 +62,7 @@ app.use(globalErrorHandler);
 app.use('*', notFoundHandler);
 
 const getAccessTokenSecret = () =>
-  process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
+  process.env.JWT_ACCESS_SECRET;
 
 const wss = new WebSocket.Server({ server, path: '/ws' });
 
@@ -77,8 +78,21 @@ wss.on('connection', (ws, req) => {
       }
 
       const decoded = jwt.verify(token, getAccessTokenSecret());
-      ws.user = { id: decoded.id, email: decoded.email };
-      ws.userId = decoded.id;
+
+      const user = await User.findById(decoded.id);
+      if (!user || !user.isActive) {
+        ws.close(4002);
+        return;
+      }
+
+      const currentVersion = typeof user.tokenVersion === 'number' ? user.tokenVersion : 0;
+      if (typeof decoded.tokenVersion !== 'number' || decoded.tokenVersion !== currentVersion) {
+        ws.close(4002);
+        return;
+      }
+
+      ws.user = { id: user._id, email: user.email };
+      ws.userId = user._id;
 
       const permissions = await rbacService.getUserPermissions(ws.userId);
       const slugs = permissions.map(p => p.slug);
