@@ -36,7 +36,7 @@ const login = async (req, res, next) => {
     const cookieOptions = {
       httpOnly: true,
       secure: "production",
-      sameSite: "strict",
+      sameSite: "none",
       maxAge: refreshTokenMaxAgeMs
     };
 
