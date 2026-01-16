@@ -119,7 +119,7 @@ wss.on('connection', (ws, req) => {
         try {
           const parsed = JSON.parse(message);
           if (parsed.type === 'ping') {
-             // console.log(`Ping received from ${ws.user.email}`); // Opsional: Çox log olmaması üçün comment-də saxla
+             console.log(`Ping received from ${ws.user.email}`);
              ws.send(JSON.stringify({ type: 'pong' }));
           } else {
              console.log(`📩 Message from ${ws.user.email}:`, parsed);
