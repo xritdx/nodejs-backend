@@ -16,6 +16,16 @@ const auth = async (req, res, next) => {
 
     const decoded = jwt.verify(token, getAccessTokenSecret());
 
+    const nowMs = Date.now();
+    const expMs = typeof decoded.exp === 'number' ? decoded.exp * 1000 : null;
+    const remainingMs = expMs !== null ? expMs - nowMs : null;
+
+    req.auth = {
+      token: decoded,
+      tokenExpiresAt: expMs,
+      tokenExpiresInMs: remainingMs
+    };
+
     const user = await User.findById(decoded.id).select('-password');
     
     if (!user) {

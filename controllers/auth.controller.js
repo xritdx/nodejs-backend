@@ -146,11 +146,17 @@ const me = async (req, res, next) => {
     const roles = await rbacService.getUserRoles(user._id);
     const permissions = await rbacService.getUserPermissions(user._id);
 
+    const tokenExpiresInMs =
+      req.auth && typeof req.auth.tokenExpiresInMs === "number"
+        ? req.auth.tokenExpiresInMs
+        : null;
+
     res.status(200).json({
       success: true,
       user,
       roles,
-      permissions: permissions.map(p => p.slug)
+      permissions: permissions.map(p => p.slug),
+      accessTokenExpiresInMs: tokenExpiresInMs
     });
   } catch (error) {
     next(error);
