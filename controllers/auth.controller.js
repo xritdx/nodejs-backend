@@ -33,6 +33,15 @@ const login = async (req, res, next) => {
       }
     });
 
+    const cookieOptions = {
+      httpOnly: true,
+      secure: "production",
+      sameSite: "strict",
+      maxAge: refreshTokenMaxAgeMs
+    };
+
+    res.cookie("refreshToken", refreshToken, cookieOptions);
+
     res.status(statusCode).json({
       message: "Uğurla daxil oldunuz",
       success: true,
@@ -41,11 +50,9 @@ const login = async (req, res, next) => {
       roles,
       permissions: permissions.map(p => p.slug),
       accessToken,
-      refreshToken,
       accessTokenExpiresIn,
       refreshTokenExpiresIn,
       accessTokenMaxAgeMs,
-      refreshTokenMaxAgeMs,
       rememberMe
     });
   } catch (error) {
@@ -56,7 +63,7 @@ const login = async (req, res, next) => {
 const refresh = async (req, res, next) => {
   try {
     const refreshTokenFromClient =
-      req.body && req.body.refreshToken ? req.body.refreshToken : null;
+      req.cookies && req.cookies.refreshToken ? req.cookies.refreshToken : null;
     if (!refreshTokenFromClient) {
       const error = new Error("Yeniləmə tokeni tapılmadı");
       error.statusCode = 401;
@@ -82,12 +89,20 @@ const refresh = async (req, res, next) => {
       statusCode
     });
 
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: refreshTokenMaxAgeMs
+    };
+
+    res.cookie("refreshToken", refreshToken, cookieOptions);
+
     res.status(statusCode).json({
       message: "Token uğurla yeniləndi",
       success: true,
       tokenType: "Bearer",
       accessToken,
-      refreshToken,
       accessTokenExpiresIn,
       accessTokenMaxAgeMs,
       refreshTokenExpiresIn,
@@ -99,8 +114,6 @@ const refresh = async (req, res, next) => {
 };
 
 const logout = async (req, res, next) => {
-  console.log(req.user);
-  
   try {
     const userId = req.user && req.user._id ? req.user._id : null;
 
@@ -119,6 +132,12 @@ const logout = async (req, res, next) => {
       userId,
       action: "auth.logout",
       statusCode
+    });
+
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict"
     });
 
     res.status(statusCode).json({
