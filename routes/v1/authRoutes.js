@@ -7,7 +7,7 @@ const authMiddleware = require('../../middlewares/auth');
 const router = express.Router();
 
 router.post('/login', loginValidation, validationErrorHandler, AuthController.login);
-router.post('/refresh', authMiddleware, AuthController.refresh);
+router.post('/refresh', AuthController.refresh);
 router.post('/logout', authMiddleware, AuthController.logout);
 router.get('/me', authMiddleware, AuthController.me);
 

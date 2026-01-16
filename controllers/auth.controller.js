@@ -94,6 +94,8 @@ const refresh = async (req, res, next) => {
 };
 
 const logout = async (req, res, next) => {
+  console.log(req.user);
+  
   try {
     const userId = req.user && req.user._id ? req.user._id : null;
 
