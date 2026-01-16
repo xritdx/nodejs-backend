@@ -5,6 +5,8 @@ const getAccessTokenSecret = () =>
   process.env.JWT_ACCESS_SECRET ;
 
 const auth = async (req, res, next) => {
+  console.log(req.user);
+  
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
     if (!token) {
@@ -14,7 +16,16 @@ const auth = async (req, res, next) => {
       });
     }
 
-    const decoded = jwt.verify(token, getAccessTokenSecret());
+    const decoded = jwt.verify(token, getAccessTokenSecret(), {
+      algorithms: ["HS256"]
+    });
+
+    if (!decoded || !decoded.id) {
+      return res.status(401).json({
+        success: false,
+        message: "Token etibarlı deyil"
+      });
+    }
 
     const nowMs = Date.now();
     const expMs = typeof decoded.exp === 'number' ? decoded.exp * 1000 : null;

@@ -23,7 +23,8 @@ const REFRESH_TOKEN_EXPIRES_IN_LONG =
 
 const toMs = value => {
   if (typeof value === "number") return value;
-  const match = /^(\d+)([smhd])$/.exec(value);
+  if (typeof value !== "string") return 0;
+  const match = /^(\d+)([smhd])$/.exec(value.trim());
   if (!match) return 0;
   const amount = parseInt(match[1], 10);
   const unit = match[2];
@@ -80,11 +81,13 @@ const login = async ({ email, password, rememberMe }) => {
   };
 
   const accessToken = jwt.sign(accessTokenPayload, getAccessTokenSecret(), {
-    expiresIn: accessTokenExpiresIn
+    expiresIn: accessTokenExpiresIn,
+    algorithm: "HS256"
   });
 
   const refreshToken = jwt.sign(refreshTokenPayload, getRefreshTokenSecret(), {
-    expiresIn: refreshTokenExpiresIn
+    expiresIn: refreshTokenExpiresIn,
+    algorithm: "HS256"
   });
 
   return {
@@ -101,7 +104,15 @@ const login = async ({ email, password, rememberMe }) => {
 
 const refreshAccessToken = async refreshToken => {
   try {
-    const decoded = jwt.verify(refreshToken, getRefreshTokenSecret());
+    const decoded = jwt.verify(refreshToken, getRefreshTokenSecret(), {
+      algorithms: ["HS256"]
+    });
+
+    if (!decoded || !decoded.id) {
+      const error = new Error("Yeniləmə tokeni etibarlı deyil və ya müddəti bitib");
+      error.statusCode = 401;
+      throw error;
+    }
 
     const user = await User.findById(decoded.id);
     if (!user || !user.isActive) {
@@ -143,12 +154,18 @@ const refreshAccessToken = async refreshToken => {
     };
 
     const accessToken = jwt.sign(accessTokenPayload, getAccessTokenSecret(), {
-      expiresIn: ACCESS_TOKEN_EXPIRES_IN
+      expiresIn: ACCESS_TOKEN_EXPIRES_IN,
+      algorithm: "HS256"
     });
 
-    const newRefreshToken = jwt.sign(refreshTokenPayload, getRefreshTokenSecret(), {
-      expiresIn: refreshTokenExpiresIn
-    });
+    const newRefreshToken = jwt.sign(
+      refreshTokenPayload,
+      getRefreshTokenSecret(),
+      {
+        expiresIn: refreshTokenExpiresIn,
+        algorithm: "HS256"
+      }
+    );
 
     return {
       userId: user._id,

@@ -2,6 +2,7 @@ const authService = require("../services/auth.service");
 const rbacService = require("../services/rbac.service");
 const auditService = require("../services/audit.service");
 const User = require("../models/User");
+const { clearRefreshTokenCookies, buildRefreshCookieOptions } = require("../helpers/clearRefreshTokenCookies");
 
 const login = async (req, res, next) => {
   try {
@@ -44,14 +45,11 @@ const login = async (req, res, next) => {
       body: safeBody
     });
 
-    const cookieOptions = {
-      httpOnly: true,
-      secure: "production",
-      sameSite: "none",
-      maxAge: refreshTokenMaxAgeMs
-    };
-
-    res.cookie("refreshToken", refreshToken, cookieOptions);
+    res.cookie(
+      "refreshToken",
+      refreshToken,
+      buildRefreshCookieOptions(refreshTokenMaxAgeMs)
+    );
 
     res.status(statusCode).json({
       message: "Uğurla daxil oldunuz",
@@ -107,14 +105,11 @@ const refresh = async (req, res, next) => {
       hasRefreshCookie: !!(req.cookies && req.cookies.refreshToken)
     });
 
-    const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: refreshTokenMaxAgeMs
-    };
-
-    res.cookie("refreshToken", refreshToken, cookieOptions);
+    res.cookie(
+      "refreshToken",
+      refreshToken,
+      buildRefreshCookieOptions(refreshTokenMaxAgeMs)
+    );
 
     res.status(statusCode).json({
       message: "Token uğurla yeniləndi",
@@ -159,11 +154,7 @@ const logout = async (req, res, next) => {
       userEmail: req.user && req.user.email ? req.user.email : null
     });
 
-    res.clearCookie("refreshToken", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict"
-    });
+    clearRefreshTokenCookies(res);
 
     res.status(statusCode).json({
       message: "Təhlükəsiz şəkildə çıxış etdiniz",
@@ -175,6 +166,7 @@ const logout = async (req, res, next) => {
 };
 
 const me = async (req, res, next) => {
+  
   try {
     if (!req.user || !req.user._id) {
       return res.status(401).json({
